@@ -53,6 +53,15 @@ wndr3700_board_detect() {
 	AR71XX_MODEL="$machine"
 }
 
+cybertan_get_hw_magic() {
+	local part
+
+	part=$(find_mtd_part firmware)
+	[ -z "$part" ] && return 1
+
+	dd bs=8 count=1 skip=0 if=$part 2>/dev/null | hexdump -v -n 8 -e '1/1 "%02x"'
+}
+
 tplink_get_hwid() {
 	local part
 
@@ -423,6 +432,9 @@ ar71xx_board_detect() {
 	*TL-WR1043ND)
 		name="tl-wr1043nd"
 		;;
+	*"TL-WR1043ND v2")
+		name="tl-wr1043nd-v2"
+		;;
 	*TL-WR2543N*)
 		name="tl-wr2543n"
 		;;
@@ -485,6 +497,9 @@ ar71xx_board_detect() {
 		;;
 	*"TL-WR841N/ND v8")
 		name="tl-wr841n-v8"
+		;;
+	*"TL-WR842N/ND v2")
+		name="tl-wr842n-v2"
 		;;
 	*TL-WR941ND)
 		name="tl-wr941nd"
