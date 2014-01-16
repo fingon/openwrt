@@ -96,6 +96,7 @@ static struct bh_map button_map[] = {
 	BH_MAP(KEY_RESTART,	"reset"),
 	BH_MAP(KEY_RFKILL,	"rfkill"),
 	BH_MAP(KEY_WPS_BUTTON,	"wps"),
+	BH_MAP(KEY_WIMAX,	"wwan"),
 };
 
 /* -------------------------------------------------------------------------*/
@@ -612,7 +613,7 @@ static int gpio_keys_remove(struct platform_device *pdev)
 	if (bdev->polled)
 		gpio_keys_polled_close(bdev);
 
-	return gpio_keys_remove(pdev);
+	return 0;
 }
 
 static struct platform_driver gpio_keys_driver = {

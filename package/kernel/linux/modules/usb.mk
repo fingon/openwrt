@@ -74,8 +74,18 @@ define KernelPackage/usb-eth-gadget
 	CONFIG_USB_ETH_RNDIS=y \
 	CONFIG_USB_ETH_EEM=y
   DEPENDS:=+kmod-usb-gadget +(!LINUX_3_3&&!LINUX_3_6):kmod-usb-lib-composite
+ifneq ($(wildcard $(LINUX_DIR)/drivers/usb/gadget/u_ether.ko),)
+  FILES:= \
+	$(LINUX_DIR)/drivers/usb/gadget/u_ether.ko \
+	$(LINUX_DIR)/drivers/usb/gadget/u_rndis.ko \
+	$(LINUX_DIR)/drivers/usb/gadget/usb_f_rndis.ko \
+	$(LINUX_DIR)/drivers/usb/gadget/usb_f_eem.ko \
+	$(LINUX_DIR)/drivers/usb/gadget/g_ether.ko
+  AUTOLOAD:=$(call AutoLoad,52,g_ether)
+else
   FILES:=$(LINUX_DIR)/drivers/usb/gadget/g_ether.ko
   AUTOLOAD:=$(call AutoLoad,52,g_ether)
+endif
   $(call AddDepends/usb)
 endef
 
@@ -179,7 +189,7 @@ $(eval $(call KernelPackage,usb2))
 
 define KernelPackage/usb2-pci
   TITLE:=Support for PCI USB2 controllers
-  DEPENDS:=@PCI_SUPPORT @(LINUX_3_8||LINUX_3_9||LINUX_3_10) +kmod-usb2
+  DEPENDS:=@PCI_SUPPORT @(!LINUX_3_3&&!LINUX_3_6) +kmod-usb2
   KCONFIG:=CONFIG_USB_EHCI_PCI
   FILES:=$(LINUX_DIR)/drivers/usb/host/ehci-pci.ko
   AUTOLOAD:=$(call AutoLoad,42,ehci-pci,1)
