@@ -66,6 +66,16 @@ define CompressLzma
   $(STAGING_DIR_HOST)/bin/lzma e $(1) -lc1 -lp2 -pb2 $(3) $(2)
 endef
 
+define PatchKernel
+	cp $(KDIR)/vmlinux$(3) $(KDIR_TMP)/vmlinux$(3)-$(1)
+	$(STAGING_DIR_HOST)/bin/patch-cmdline $(KDIR_TMP)/vmlinux$(3)-$(1) "$(strip $(2))"
+endef
+
+define PatchKernel/initramfs
+	$(call PatchKernel,$(1),$(2),-initramfs)
+	cp $(KDIR_TMP)/vmlinux-initramfs-$(1) $(call imgname,initramfs,$(1)).bin
+endef
+
 define PatchKernelLzma
 	cp $(KDIR)/vmlinux$(4) $(KDIR_TMP)/vmlinux$(4)-$(1)
 	$(STAGING_DIR_HOST)/bin/patch-cmdline $(KDIR_TMP)/vmlinux$(4)-$(1) "$(strip $(2))"
@@ -132,9 +142,9 @@ define CatFiles
 			rm -f $(5); \
 		fi; \
 	else if [ $(2) -gt 262144 -a `stat -c%s "$(1)"` -gt $(2) ]; then \
-		echo "Warning: $(1) is too big" >&2; \
+		echo "Warning: $(1) is too big (> $(2) bytes)" >&2; \
 	else if [ `stat -c%s $(3)` -gt $(4) ]; then \
-		echo "Warning: $(3) is too big" >&2; \
+		echo "Warning: $(3) is too big (> $(4) bytes)" >&2; \
 	else \
 		( dd if=$(1) bs=$(2) conv=sync; dd if=$(3) ) > $(5); \
 	fi; fi; fi
@@ -182,6 +192,8 @@ alfa_mtdlayout_8M=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,6144k(rootfs)
 alfa_mtdlayout_16M=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,15936k(firmware),64k(nvram),64k(art)ro
 all0258n_mtdlayout=mtdparts=spi0.0:256k(u-boot),64k(u-boot-env),6272k(firmware),1536k(failsafe),64k(art)
 all0315n_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,256k(u-boot-env),13568k(firmware),2048k(failsafe),256k(art)ro
+ap81_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env)ro,5120k(rootfs),2688k(kernel),64k(art)ro,7808k@0x50000(firmware)
+ap83_mtdlayout=mtdparts=spi0.0:256k(u-boot)ro,128k(u-boot-env)ro,4096k(rootfs),3648k(kernel),64k(art)ro,7744k@0x60000(firmware)
 ap96_mtdlayout=mtdparts=spi0.0:192k(u-boot)ro,64k(u-boot-env)ro,6144k(rootfs),1728k(kernel),64k(art)ro,7872k@0x40000(firmware)
 ap113_mtd_layout=mtdparts=spi0.0:64k(u-boot),3008k(rootfs),896k(uImage),64k(NVRAM),64k(ART),3904k@0x10000(firmware)
 ap121_mtdlayout_2M=mtdparts=spi0.0:64k(u-boot)ro,1216k(rootfs),704k(kernel),64k(art)ro,1920k@0x10000(firmware)
@@ -427,6 +439,7 @@ endef
 
 
 Image/Build/MyLoader/buildkernel=$(call PatchKernelLzma,$(2),$(3))
+Image/Build/MyLoader/initramfs=$(call PatchKernel/initramfs,$(2),$(3))
 
 define Image/Build/MyLoader
 	-$(STAGING_DIR_HOST)/bin/mkmylofw -B $(2) -s $(4) \
@@ -865,8 +878,8 @@ ifeq ($(SUBTARGET),generic)
 $(eval $(call SingleProfile,ALFA,64k,ALFANX,alfa-nx,ALFA-NX,ttyS0,115200,$$(alfa_mtdlayout_8M),1638400,6291456,vmlinux.gz.uImage,pb9x-2.6.31-jffs2))
 $(eval $(call SingleProfile,ALFA,64k,HORNETUB,hornet-ub,HORNET-UB,ttyATH0,115200,$$(alfa_mtdlayout_8M),1638400,6291456,kernel_image,rootfs_image))
 
-$(eval $(call SingleProfile,AthGzip,64k,AP81,ap81,AP81,ttyS0,115200,,1310720,6619136,KRuImage))
-$(eval $(call SingleProfile,AthGzip,64k,AP83,ap83,AP83,ttyS0,115200,,1310720,6619136,KRuImage))
+$(eval $(call SingleProfile,AthGzip,64k,AP81,ap81,AP81,ttyS0,115200,$$(ap81_mtdlayout),2752512,5242880,RKuImage))
+$(eval $(call SingleProfile,AthGzip,64k,AP83,ap83,AP83,ttyS0,115200,$$(ap83_mtdlayout),3735552,4194304,RKuImage))
 $(eval $(call SingleProfile,AthGzip,64k,AP96,ap96,AP96,ttyS0,115200,$$(ap96_mtdlayout),1769472,6291456,RKuImage))
 
 $(eval $(call SingleProfile,AthLzma,64k,ALFAAP96,alfa-ap96,ALFA-AP96,ttyS0,115200,$$(alfa_ap96_mtdlayout),2097152,13631488,RKuImage))
@@ -933,7 +946,8 @@ $(eval $(call SingleProfile,AthGzip,64k,WNDAP360,wndap360,WNDAP360,ttyS0,9600,$$
 
 $(eval $(call SingleProfile,Netgear,64kraw,WNR2000V3,wnr2000v3,WNR2000V3,ttyS0,115200,$$(wnr2000v3_mtdlayout),0x32303033,WNR2000V3,"" NA,))
 $(eval $(call SingleProfile,Netgear,64kraw,WNR2200,wnr2200,WNR2200,ttyS0,115200,$$(wnr2200_mtdlayout),0x32323030,WNR2200,"" NA,))
-$(eval $(call SingleProfile,Netgear,64kraw,WNR612V2,wnr612v2,WNR612V2,ttyS0,115200,$$(wnr2000v3_mtdlayout),0x32303631,WNR612V2,"",))
+$(eval $(call SingleProfile,Netgear,64kraw,REALWNR612V2,wnr612v2,WNR612V2,ttyS0,115200,$$(wnr2000v3_mtdlayout),0x32303631,WNR612V2,"",))
+$(eval $(call SingleProfile,Netgear,64kraw,N150R,n150r,WNR612V2,ttyS0,115200,$$(wnr2000v3_mtdlayout),0x32303631,N150R,"",))
 $(eval $(call SingleProfile,Netgear,64kraw,WNDR3700V1,wndr3700,WNDR3700,ttyS0,115200,$$(wndr3700_mtdlayout),0x33373030,WNDR3700,"" NA,,7 864 320))
 $(eval $(call SingleProfile,Netgear,64kraw,WNDR3700V2,wndr3700v2,WNDR3700,ttyS0,115200,$$(wndr3700v2_mtdlayout),0x33373031,WNDR3700v2,"",-H 29763654+16+64))
 $(eval $(call SingleProfile,Netgear,64kraw,WNDR3800,wndr3800,WNDR3700,ttyS0,115200,$$(wndr3700v2_mtdlayout),0x33373031,WNDR3800,"",-H 29763654+16+128))
@@ -1072,6 +1086,7 @@ $(eval $(call MultiProfile,TLWR1043,TLWR1043V1 TLWR1043V2))
 $(eval $(call MultiProfile,TLWDR4300,TLWDR3500V1 TLWDR3600V1 TLWDR4300V1 TLWDR4310V1 MW4530RV1))
 $(eval $(call MultiProfile,UBNT,UBNTAIRROUTER UBNTRS UBNTRSPRO UBNTLSSR71 UBNTBULLETM UBNTROCKETM UBNTNANOM UBNTUNIFI UBNTUNIFIOUTDOOR UAPPRO))
 $(eval $(call MultiProfile,WNDR3700,WNDR3700V1 WNDR3700V2 WNDR3800 WNDRMAC WNDRMACV2))
+$(eval $(call MultiProfile,WNR612V2,REALWNR612V2 N150R))
 $(eval $(call MultiProfile,WP543,WP543_2M WP543_4M WP543_8M WP543_16M))
 $(eval $(call MultiProfile,WPE72,WPE72_4M WPE72_8M WPE72_16M))
 
