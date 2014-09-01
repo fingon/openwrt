@@ -77,12 +77,25 @@ define Package/valgrind/description
 	to speed up and reduce memory use of your programs.
 endef
 
+CPU := $(patsubst x86_64,amd64,$(patsubst x86,i386,$(patsubst um,$(ARCH),$(LINUX_KARCH))))
+
 CONFIGURE_VARS += \
 	UNAME_R=$(LINUX_VERSION)
+
+ifeq ($(ARCH),x86_64)
+	CONFIGURE_ARGS += \
+		--enable-only64bit
+	BITS := 64bit
+else
+	CONFIGURE_ARGS += \
+		--enable-only32bit
+	BITS := 32bit
+endif
 
 CONFIGURE_ARGS += \
 	--enable-tls \
 	--without-x \
+	--without-mpicc \
 	--without-uiout \
 	--disable-valgrindmi \
 	--disable-tui \
@@ -97,7 +110,9 @@ define Package/valgrind/install
 		./files/default.supp \
 		$(PKG_INSTALL_DIR)/usr/lib/valgrind/none-* \
 		$(PKG_INSTALL_DIR)/usr/lib/valgrind/vgpreload_core*.so \
-		$(PKG_INSTALL_DIR)/usr/lib/valgrind/*.xml \
+		$(PKG_INSTALL_DIR)/usr/lib/valgrind/$(CPU)-*.xml \
+		$(PKG_INSTALL_DIR)/usr/lib/valgrind/$(BITS)-core*.xml \
+		$(PKG_INSTALL_DIR)/usr/lib/valgrind/$(BITS)-linux*.xml \
 		$(PKG_INSTALL_DIR)/usr/lib/valgrind/memcheck-* \
 		$(PKG_INSTALL_DIR)/usr/lib/valgrind/vgpreload_memcheck*.so \
 		$(1)/usr/lib/valgrind/
